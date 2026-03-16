@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS — Real-Time OSINT Intelligence Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100;0,400;0,700;1,400&family=Exo+2:wght@300;400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:     #020508;
+  --bg2:    #060d14;
+  --bg3:    #0a1520;
+  --bg4:    #0f1e2e;
+  --panel:  #0b1825;
+  --border: #162636;
+  --border2:#1f3d5a;
+  --border3:#2a5580;
+  --g:  #00ff9d;
+  --g2: #00cc7a;
+  --g3: #008f55;
+  --c:  #00d4ff;
+  --c2: #009bbf;
+  --a:  #ffc300;
+  --a2: #cc9a00;
+  --r:  #ff2d55;
+  --r2: #cc1f3f;
+  --p:  #bf5fff;
+  --p2: #9933ff;
+  --w:  #ffffff;
+  --t:  #b8d4e8;
+  --t2: #6a92aa;
+  --t3: #3d6070;
+  --mono:'JetBrains Mono',monospace;
+  --exo: 'Exo 2',sans-serif;
+  --orb: 'Orbitron',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg);
+  color:var(--t);
+  font-family:var(--exo);
+  font-size:14px;
+  min-height:100vh;
+  overflow-x:hidden;
+  cursor:crosshair;
+}
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,255,157,0.015) 3px,rgba(0,255,157,0.015) 4px);
+  pointer-events:none;z-index:9997;
+}
+
+/* ── CANVAS BG ── */
+#bgCanvas{position:fixed;inset:0;z-index:0;opacity:0.6;}
+
+/* ── HEADER ── */
+header{
+  position:relative;z-index:100;
+  background:rgba(2,5,8,0.95);
+  border-bottom:1px solid var(--border2);
+  backdrop-filter:blur(20px);
+  padding:0 28px;
+  height:60px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.logo{display:flex;align-items:center;gap:14px;}
+.logo-hex{
+  width:42px;height:42px;
+  background:rgba(0,255,157,0.06);
+  border:1.5px solid var(--g3);
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  display:flex;align-items:center;justify-content:center;
+  animation:hexPulse 3s infinite;
+}
+@keyframes hexPulse{0%,100%{box-shadow:0 0 0 0 rgba(0,255,157,0.3);}50%{box-shadow:0 0 20px 4px rgba(0,255,157,0.15);}}
+.logo-hex svg{width:20px;height:20px;fill:var(--g);}
+.brand{font-family:var(--orb);font-size:20px;font-weight:900;letter-spacing:10px;color:var(--g);text-shadow:0 0 30px rgba(0,255,157,0.5);}
+.tagline{font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:3px;margin-top:1px;}
+.hdr-right{display:flex;align-items:center;gap:20px;}
+.hdr-stat{text-align:center;}
+.hdr-stat .val{font-family:var(--orb);font-size:16px;font-weight:700;color:var(--g);display:block;}
+.hdr-stat .lbl{font-family:var(--mono);font-size:8px;color:var(--t3);letter-spacing:2px;}
+.live-badge{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(0,255,157,0.05);
+  border:1px solid var(--g3);
+  padding:6px 14px;
+  font-family:var(--mono);font-size:11px;color:var(--g2);
+}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--g);box-shadow:0 0 8px var(--g);animation:blink 1.2s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.clock-display{font-family:var(--mono);font-size:13px;color:var(--g2);}
+
+/* ── TICKER ── */
+.ticker{
+  position:relative;z-index:50;
+  background:linear-gradient(90deg,var(--bg),var(--bg2),var(--bg));
+  border-bottom:1px solid var(--border);
+  padding:5px 0;overflow:hidden;
+}
+.ticker-track{display:flex;gap:60px;animation:tickerMove 40s linear infinite;white-space:nowrap;}
+.tick{font-family:var(--mono);font-size:10px;color:var(--t3);}
+.tick em{color:var(--g2);font-style:normal;}
+@keyframes tickerMove{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+
+/* ── MAIN ── */
+main{position:relative;z-index:10;padding:20px 24px 60px;max-width:1700px;margin:0 auto;}
+
+/* ── SECTION HEADER ── */
+.sec-hdr{
+  display:flex;align-items:center;gap:14px;
+  margin:28px 0 16px;
+}
+.sec-hdr::before{content:'';width:3px;height:18px;background:var(--g);}
+.sec-hdr-txt{font-family:var(--orb);font-size:10px;letter-spacing:5px;color:var(--g3);}
+.sec-hdr::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border2),transparent);}
+
+/* ── STATS ROW ── */
+.stats-row{
+  display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:24px;
+}
+.stat-card{
+  background:var(--panel);
+  border:1px solid var(--border);
+  padding:14px 16px;
+  position:relative;overflow:hidden;
+  transition:border-color .2s;
+}
+.stat-card:hover{border-color:var(--border2);}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.stat-card:nth-child(1)::before{background:var(--g);}
+.stat-card:nth-child(2)::before{background:var(--c);}
+.stat-card:nth-child(3)::before{background:var(--a);}
+.stat-card:nth-child(4)::before{background:var(--r);}
+.stat-card:nth-child(5)::before{background:var(--p);}
+.stat-card:nth-child(6)::before{background:var(--g2);}
+.stat-num{font-family:var(--orb);font-size:26px;font-weight:900;display:block;line-height:1;}
+.stat-lbl{font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:2px;margin-top:4px;}
+
+/* ── MODULE GRID ── */
+.mods{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.mods.two-col{grid-template-columns:repeat(2,1fr);}
+.mod{
+  background:var(--panel);
+  border:1px solid var(--border);
+  position:relative;overflow:hidden;
+  transition:border-color .2s,transform .15s;
+}
+.mod:hover{border-color:var(--border2);transform:translateY(-1px);}
+.mod::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.01) 0%,transparent 60%);
+  pointer-events:none;
+}
+.mod-top-bar{position:absolute;top:0;left:0;right:0;height:1.5px;}
+.mod.g .mod-top-bar{background:linear-gradient(90deg,transparent,var(--g),transparent);}
+.mod.c .mod-top-bar{background:linear-gradient(90deg,transparent,var(--c),transparent);}
+.mod.a .mod-top-bar{background:linear-gradient(90deg,transparent,var(--a),transparent);}
+.mod.r .mod-top-bar{background:linear-gradient(90deg,transparent,var(--r),transparent);}
+.mod.p .mod-top-bar{background:linear-gradient(90deg,transparent,var(--p),transparent);}
+
+.mod-hdr{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 16px;
+  border-bottom:1px solid var(--border);
+  background:rgba(0,0,0,0.25);
+}
+.mod-ico{
+  width:30px;height:30px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;
+  border:1px solid;flex-shrink:0;
+}
+.mod.g .mod-ico{border-color:var(--g3);color:var(--g);background:rgba(0,255,157,0.06);}
+.mod.c .mod-ico{border-color:var(--c2);color:var(--c);background:rgba(0,212,255,0.06);}
+.mod.a .mod-ico{border-color:var(--a2);color:var(--a);background:rgba(255,195,0,0.06);}
+.mod.r .mod-ico{border-color:var(--r2);color:var(--r);background:rgba(255,45,85,0.06);}
+.mod.p .mod-ico{border-color:var(--p2);color:var(--p);background:rgba(191,95,255,0.06);}
+
+.mod-title{font-family:var(--orb);font-size:11px;letter-spacing:2px;font-weight:700;}
+.mod.g .mod-title{color:var(--g2);}
+.mod.c .mod-title{color:var(--c2);}
+.mod.a .mod-title{color:var(--a2);}
+.mod.r .mod-title{color:var(--r2);}
+.mod.p .mod-title{color:var(--p);}
+.mod-sub{font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:1px;margin-top:2px;}
+.mod-badge{
+  margin-left:auto;
+  font-family:var(--mono);font-size:8px;
+  padding:2px 8px;border:1px solid;letter-spacing:2px;
+}
+.mod.g .mod-badge{border-color:var(--g3);color:var(--g3);}
+.mod.c .mod-badge{border-color:var(--c2);color:var(--c2);}
+.mod.a .mod-badge{border-color:var(--a2);color:var(--a2);}
+.mod.r .mod-badge{border-color:var(--r2);color:var(--r2);}
+.mod.p .mod-badge{border-color:var(--p2);color:var(--p2);}
+
+.mod-body{padding:14px 16px;}
+
+/* ── INPUTS ── */
+.irow{display:flex;gap:6px;margin-bottom:10px;}
+.inp{
+  flex:1;background:var(--bg);
+  border:1px solid var(--border2);color:var(--t);
+  font-family:var(--mono);font-size:12px;
+  padding:8px 12px;outline:none;
+  transition:border-color .2s,box-shadow .2s;
+}
+.inp:focus{border-color:var(--g3);box-shadow:0 0 0 2px rgba(0,255,157,0.08);}
+.inp::placeholder{color:var(--t3);}
+.sel{
+  background:var(--bg);border:1px solid var(--border2);
+  color:var(--t2);font-family:var(--mono);font-size:11px;
+  padding:8px 10px;outline:none;cursor:pointer;
+}
+.btn{
+  background:rgba(0,0,0,0.5);border:1px solid;
+  color:inherit;font-family:var(--orb);font-size:10px;
+  letter-spacing:2px;padding:8px 14px;cursor:pointer;
+  transition:all .15s;white-space:nowrap;
+  position:relative;overflow:hidden;
+}
+.btn::before{content:'';position:absolute;inset:0;background:rgba(255,255,255,0.05);opacity:0;transition:opacity .15s;}
+.btn:hover::before{opacity:1;}
+.btn:active{transform:scale(0.97);}
+.btn.g{border-color:var(--g3);color:var(--g);}
+.btn.c{border-color:var(--c2);color:var(--c);}
+.btn.a{border-color:var(--a2);color:var(--a);}
+.btn.r{border-color:var(--r2);color:var(--r);}
+.btn.p{border-color:var(--p2);color:var(--p);}
+
+/* ── RESULTS ── */
+.res{
+  display:none;
+  background:var(--bg);
+  border:1px solid var(--border);
+  padding:12px 14px;
+  font-family:var(--mono);font-size:11px;
+  line-height:2;margin-top:8px;
+  max-height:220px;overflow-y:auto;
+}
+.res.on{display:block;}
+.res::-webkit-scrollbar{width:4px;}
+.res::-webkit-scrollbar-thumb{background:var(--border2);}
+.rl{color:var(--t3);}
+.rv{color:var(--g);}
+.rc{color:var(--c);}
+.ra{color:var(--a);}
+.rr{color:var(--r);}
+.rp{color:var(--p);}
+.rok{color:var(--g2);}
+.rwn{color:var(--a);}
+.rbd{color:var(--r);}
+
+/* ── LINK GRIDS ── */
+.lgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:8px;}
+.lgrid.c4{grid-template-columns:repeat(4,1fr);}
+.lgrid.c2{grid-template-columns:repeat(2,1fr);}
+.lnk{
+  display:block;
+  background:var(--bg3);border:1px solid var(--border);
+  color:var(--t3);font-family:var(--mono);font-size:10px;
+  padding:7px 6px;text-align:center;text-decoration:none;
+  transition:all .15s;letter-spacing:.5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.lnk:hover{background:var(--bg4);border-color:var(--border2);}
+.lnk.g:hover{border-color:var(--g);color:var(--g);}
+.lnk.c:hover{border-color:var(--c);color:var(--c);}
+.lnk.a:hover{border-color:var(--a);color:var(--a);}
+.lnk.r:hover{border-color:var(--r);color:var(--r);}
+.lnk.p:hover{border-color:var(--p);color:var(--p);}
+
+/* ── USERNAME LINKS ── */
+.ulinks{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:8px;max-height:200px;overflow-y:auto;}
+.ulinks::-webkit-scrollbar{width:4px;}
+.ulinks::-webkit-scrollbar-thumb{background:var(--border2);}
+.ulink{
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg3);border:1px solid var(--border);
+  padding:6px 10px;text-decoration:none;
+  font-family:var(--mono);font-size:10px;color:var(--t3);
+  transition:all .15s;
+}
+.ulink:hover{border-color:var(--c2);color:var(--c);}
+.udot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+
+/* ── TAGS ── */
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;}
+.tag{
+  font-family:var(--mono);font-size:9px;
+  padding:3px 10px;border:1px solid var(--border2);
+  color:var(--t3);cursor:pointer;letter-spacing:1px;
+  transition:all .15s;
+}
+.tag:hover{border-color:var(--c2);color:var(--c);}
+
+/* ── PROGRESS ── */
+.pbar{height:2px;background:var(--border);margin:6px 0;overflow:hidden;}
+.pfill{height:100%;background:var(--g);transition:width .4s ease;width:0;}
+
+/* ── AI RESULT ── */
+.ai-res{
+  display:none;
+  background:rgba(0,255,157,0.03);
+  border:1px solid var(--g3);
+  padding:14px;margin-top:10px;
+  font-family:var(--exo);font-size:12px;
+  line-height:1.7;color:var(--t);
+}
+.ai-res.on{display:block;}
+.ai-hdr{
+  font-family:var(--mono);font-size:10px;
+  color:var(--g);letter-spacing:2px;
+  margin-bottom:8px;display:flex;align-items:center;gap:8px;
+}
+.ai-spin{
+  display:inline-block;width:10px;height:10px;
+  border:1.5px solid var(--g3);border-top-color:var(--g);
+  border-radius:50%;animation:spin .5s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── NOTIFICATION ── */
+#notif{
+  position:fixed;top:70px;right:20px;
+  background:var(--bg2);border:1px solid var(--g3);
+  padding:10px 18px;
+  font-family:var(--mono);font-size:11px;color:var(--g);
+  z-index:9999;transform:translateX(130%);transition:transform .3s;
+  max-width:300px;
+}
+#notif.show{transform:translateX(0);}
+
+/* ── ENGINE GRID ── */
+.eng-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px;}
+
+/* ── WIDE MOD ── */
+.mod.wide{grid-column:span 2;}
+.mod.full{grid-column:span 3;}
+@media(max-width:900px){.mod.wide,.mod.full{grid-column:span 1;}.mods{grid-template-columns:1fr;}}
+
+/* ── AI MODULE ── */
+.ai-input-area{
+  background:var(--bg);border:1px solid var(--border2);
+  padding:12px;margin-bottom:10px;
+}
+.ai-textarea{
+  width:100%;background:transparent;border:none;
+  color:var(--t);font-family:var(--mono);font-size:12px;
+  resize:none;outline:none;min-height:60px;line-height:1.6;
+}
+.ai-textarea::placeholder{color:var(--t3);}
+.ai-models{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.ai-model-btn{
+  font-family:var(--mono);font-size:9px;letter-spacing:1px;
+  padding:4px 12px;border:1px solid var(--border2);
+  color:var(--t3);background:var(--bg);cursor:pointer;
+  transition:all .15s;
+}
+.ai-model-btn.active{border-color:var(--g);color:var(--g);background:rgba(0,255,157,0.05);}
+
+/* ── MAP EMBED ── */
+.geo-map{
+  width:100%;height:180px;
+  border:1px solid var(--border);
+  margin-top:8px;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:11px;color:var(--t3);
+  position:relative;overflow:hidden;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border2);}
+
+/* ── FOOTER ── */
+footer{
+  position:relative;z-index:10;
+  border-top:1px solid var(--border);
+  padding:14px 28px;
+  display:flex;justify-content:space-between;align-items:center;
+  background:rgba(2,5,8,0.8);
+}
+footer .fl{font-family:var(--mono);font-size:10px;color:var(--t3);}
+footer .fr{font-family:var(--orb);font-size:9px;color:var(--t3);letter-spacing:3px;}
+
+/* ── DISCLAIMER ── */
+.disc{
+  background:rgba(255,195,0,0.04);border:1px solid rgba(255,195,0,0.2);
+  padding:8px 14px;margin-bottom:20px;
+  display:flex;align-items:center;gap:10px;
+  font-family:var(--mono);font-size:10px;color:var(--a2);letter-spacing:.5px;
+}
+</style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+<div id="notif"></div>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header>
+  <div class="logo">
+    <div class="logo-hex">
+      <svg viewBox="0 0 24 24"><path d="M12 2L22 8V16L12 22L2 16V8L12 2Z" stroke="#00ff9d" stroke-width="1.5" fill="none"/><circle cx="12" cy="12" r="3" fill="#00ff9d"/></svg>
+    </div>
+    <div>
+      <div class="brand">NEXUS</div>
+      <div class="tagline">OPEN SOURCE INTELLIGENCE PLATFORM · REAL-TIME</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="hdr-stat"><span class="val" style="color:var(--g)" id="h-tools">12</span><div class="lbl">MODULES</div></div>
+    <div class="hdr-stat"><span class="val" style="color:var(--c)" id="h-eng">10</span><div class="lbl">ENGINES</div></div>
+    <div class="hdr-stat"><span class="val" style="color:var(--a)" id="h-plat">40</span><div class="lbl">PLATFORMS</div></div>
+    <div class="live-badge"><div class="live-dot"></div>LIVE SYSTEM</div>
+    <div class="clock-display" id="clk">--:--:--</div>
+  </div>
+</header>
+
+<!-- ═══════════════ TICKER ═══════════════ -->
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack">
+    <span class="tick">MODULES: <em>ALL ONLINE</em></span>
+    <span class="tick">IP GEOLOCATION: <em>LIVE API</em></span>
+    <span class="tick">AI ANALYSIS: <em>CLAUDE POWERED</em></span>
+    <span class="tick">EMAIL INTEL: <em>ACTIVE</em></span>
+    <span class="tick">PHONE LOOKUP: <em>200+ COUNTRIES</em></span>
+    <span class="tick">USERNAME HUNT: <em>40+ PLATFORMS</em></span>
+    <span class="tick">BREACH CHECK: <em>7 DATABASES</em></span>
+    <span class="tick">NETWORK TOOLS: <em>12 SERVICES</em></span>
+    <span class="tick">DARK WEB MONITOR: <em>ENABLED</em></span>
+    <span class="tick">GEO-OSINT: <em>LIVE COORDS</em></span>
+    <span class="tick">SEARCH AGGREGATOR: <em>10 ENGINES</em></span>
+    <span class="tick">SOCIAL FINDER: <em>REAL-TIME</em></span>
+    <!-- repeat -->
+    <span class="tick">MODULES: <em>ALL ONLINE</em></span>
+    <span class="tick">IP GEOLOCATION: <em>LIVE API</em></span>
+    <span class="tick">AI ANALYSIS: <em>CLAUDE POWERED</em></span>
+    <span class="tick">EMAIL INTEL: <em>ACTIVE</em></span>
+    <span class="tick">PHONE LOOKUP: <em>200+ COUNTRIES</em></span>
+    <span class="tick">USERNAME HUNT: <em>40+ PLATFORMS</em></span>
+    <span class="tick">BREACH CHECK: <em>7 DATABASES</em></span>
+    <span class="tick">NETWORK TOOLS: <em>12 SERVICES</em></span>
+    <span class="tick">DARK WEB MONITOR: <em>ENABLED</em></span>
+    <span class="tick">GEO-OSINT: <em>LIVE COORDS</em></span>
+    <span class="tick">SEARCH AGGREGATOR: <em>10 ENGINES</em></span>
+    <span class="tick">SOCIAL FINDER: <em>REAL-TIME</em></span>
+  </div>
+</div>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<main>
+
+<div class="disc">⚠ NEXUS OSINT PLATFORM — FOR EDUCATIONAL & EXTRACURRICULAR DEMONSTRATION ONLY. USES PUBLIC DATA SOURCES. USE RESPONSIBLY AND ETHICALLY.</div>
+
+<!-- STATS -->
+<div class="stats-row">
+  <div class="stat-card"><span class="stat-num" style="color:var(--g)">10</span><div class="stat-lbl">SEARCH ENGINES</div></div>
+  <div class="stat-card"><span class="stat-num" style="color:var(--c)">40+</span><div class="stat-lbl">SOCIAL PLATFORMS</div></div>
+  <div class="stat-card"><span class="stat-num" style="color:var(--a)">12</span><div class="stat-lbl">NETWORK TOOLS</div></div>
+  <div class="stat-card"><span class="stat-num" style="color:var(--r)">7</span><div class="stat-lbl">BREACH DATABASES</div></div>
+  <div class="stat-card"><span class="stat-num" style="color:var(--p)">200+</span><div class="stat-lbl">COUNTRY CODES</div></div>
+  <div class="stat-card"><span class="stat-num" style="color:var(--g)">AI</span><div class="stat-lbl">POWERED ANALYSIS</div></div>
+</div>
+
+<!-- ════ ROW 1 ════ -->
+<div class="sec-hdr"><span class="sec-hdr-txt">SEARCH & DISCOVERY</span></div>
+<div class="mods">
+
+<!-- MODULE 1: SEARCH AGGREGATOR (wide) -->
+<div class="mod g wide">
+  <div class="mod-top-bar"></div>
+  <div class="mod-hdr">
+    <div class="mod-ico">⚡</div>
+    <div>
+      <div class="mod-title">SEARCH AGGREGATOR</div>
+      <div class="mod-sub">MULTI-ENGINE INTELLIGENCE QUERY LAUNCHER</div>
+    </div>
+    <div class="mod-badge">10 ENGINES</div>
+  </div>
+  <div class="mod-body">
+    <div class="irow">
+      <input class="inp" id="sq" placeholder="Enter query, name, email, domain, IP, username...">
+      <select class="sel" id="se">
+        <option value="google">Google</option>
+        <option value="bing">Bing</option>
+        <option value="ddg">DuckDuckGo</option>
+        <option value="yandex">Yandex</option>
+        <option value="brave">Brave</option>
+        <option value="startpage">Startpage</option>
+        <option value="ecosia">Ecosia</option>
+        <option value="shodan">Shodan</option>
+        <option value="censys">Censys</option>
+        <option value="greynoise">GreyNoise</option>
+      </select>
+      <button class="btn g" onclick="doSearch()">SEARCH ▶</button>
+    </div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-bottom:7px;">LAUNCH ALL ENGINES SIMULTANEOUSLY:</div>
+    <div class="eng-grid">
+      <a class="lnk g" href="#" onclick="se('google');return false;">🌐 Google</a>
+      <a class="lnk g" href="#" onclick="se('bing');return false;">Ⓑ Bing</a>
+      <a class="lnk g" href="#" onclick="se('ddg');return false;">🦆 DuckDuckGo</a>
+      <a class="lnk g" href="#" onclick="se('yandex');return false;">Я Yandex</a>
+      <a class="lnk g" href="#" onclick="se('brave');return false;">🦁 Brave</a>
+      <a class="lnk g" href="#" onclick="se('startpage');return false;">✦ Startpage</a>
+      <a class="lnk g" href="#" onclick="se('shodan');return false;">📡 Shodan</a>
+      <a class="lnk g" href="#" onclick="se('censys');return false;">🔭 Censys</a>
+      <a class="lnk g" href="#" onclick="se('ecosia');return false;">🌿 Ecosia</a>
+      <a class="lnk g" href="#" onclick="se('greynoise');return false;">🕵 GreyNoise</a>
+    </div>
+    <div class="tags">
+      <div class="tag" onclick="pt('site:linkedin.com')">site:linkedin.com</div>
+      <div class="tag" onclick="pt('site:github.com')">site:github.com</div>
+      <div class="tag" onclick="pt('filetype:pdf')">filetype:pdf</div>
+      <div class="tag" onclick="pt('inurl:admin')">inurl:admin</div>
+      <div class="tag" onclick="pt('intitle:\"index of\"')">intitle:index.of</div>
+      <div class="tag" onclick="pt('intext:password')">intext:password</div>
+      <div class="tag" onclick="pt('cache:')">cache:</div>
+      <div class="tag" onclick="pt('-site:')">-site:</div>
+      <div class="tag" onclick="pt('before:2020-01-01')">before:2020</div>
+      <div class="tag" onclick="pt('after:2023-01-01')">after:2023</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODULE 2: USERNAME HUNT -->
+<div class="mod c">
+  <div class="mod-top-bar"></div>
+  <div class="mod-hdr">
+    <div class="mod-ico">👤</div>
+    <div>
+      <div class="mod-title">USERNAME HUNTER</div>
+      <div class="mod-sub">40+ PLATFORM PROFILE SCANNER</div>
+    </div>
+    <div class="mod-badge">40 SITES</div>
+  </div>
+  <div class="mod-body">
+    <div class="irow">
+      <input class="inp" id="ui" placeholder="target_username">
+      <button class="btn c" onclick="huntUser()">HUNT ▶</button>
+    </div>
+    <div id="uresArea" style="display:none;">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-bottom:5px;">PROFILE LINKS — CLICK TO OPEN IN NEW TAB:</div>
+      <div class="ulinks" id="uresLinks"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /mods row1 -->
+
+<!-- ════ ROW 2 ════ -->
+<div class="sec-hdr"><span class="sec-hdr-txt">IDENTITY INTELLIGENCE</span></div>
+<div class="mods">
+
+<!-- EMAIL -->
+<div class="mod c">
+  <div class="mod-top-bar"></div>
+  <div class="mod-hdr">
+    <div class="mod-ico">✉</div>
+    <div>
+      <div class="mod-title">EMAIL INTELLIGENCE</div>
+      <div class="mod-sub">FORMAT · PROVIDER · BREACH CHECK</div>
+    </div>
+    <div class="mod-badge">ONLINE</div>
+  </div>
+  <div class="mod-body">
+    <div class="irow">
+      <input class="inp" id="ei" placeholder="target@example.com">
+      <button class="btn c" onclick="analyzeEmail()">ANALYZE</button>
+    </div>
+    <div class="res" id="er"></div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin:10px 0 5px;">BREACH & VERIFICATION SERVICES:</div>
+    <div class="lgrid">
+      <a class="lnk r" id="el1" href="https://haveibeenpwned.com" target="_blank">HaveIBeenPwned</a>
+      <a class="lnk r" id="el2" href="https://dehashed.com" target="_blank">DeHashed</a>
+      <a class="lnk r" id="el3" href="https://hunter.io" target="_blank">Hunter.io</a>
+      <a class="lnk r" id="el4" href="https://emailrep.io" target="_blank">EmailRep.io</a>
+      <a class="lnk r" id="el5" href="https://snov.io/email-verifier" target="_blank">Snov.io</a>
+      <a class="lnk r" id="el6" href="https://verify-email.org" target="_blank">VerifyEmail</a>
+    </div>
+  </div>
+</div>
+
+<!-- PHONE -->
+<div class="mod a">
+  <div class="mod-top-bar"></div>
+  <div class="mod-hdr">
+    <div class="mod-ico">📞</div>
+    <div>
+      <div class="mod-title">PHONE INTELLIGENCE</div>
+      <div class="mod-sub">COUNTRY · CARRIER · FORMAT DECODE</div>
+    </div>
+    <div class="mod-badge">200+ CC</div>
+  </div>
+  <div class="mod-body">
+    <div class="irow">
+      <input class="inp" id="pi" placeholder="+91 9876543210 or +1 415 555 0100">
+      <button class="btn a" onclick="analyzePhone()">DECODE</button>
+    </div>
+    <div class="res" id="pr"></div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin:10px 0 5px;">CARRIER LOOKUP SERVICES:</div>
+    <div class="lgrid">
+      <a class="lnk a" id="pl1" href="https://truecaller.com" target="_blank">Truecaller</a>
+      <a class="lnk a" id="pl2" href="https://numverify.com" target="_blank">NumVerify</a>
+      <a class="lnk a" id="pl3" href="https://sync.me" target="_blank">Sync.me</a>
+      <a class="lnk a" id="pl4" href="https://spydialer.com" target="_blank">SpyDialer</a>
+      <a class="lnk a" id="pl5" href="https://calleridtest.com" target="_blank">CallerID</a>
+      <a class="lnk a" id="pl6" href="https://searchpeoplefree.com" target="_blank">PeopleSearch</a>
+    </div>
+  </div>
+</div>
+
+<!-- PEOPLE SEARCH -->
+<div class="mod r">
+  <div class="mod-top-bar"></div>
+  <div class="mod-hdr">
+    <div class="mod-ico">🔎</div>
+    <div>
+      <div class="mod-title">PEOPLE SEARCH</div>
+      <div class="mod-sub">PUBLIC RECORDS & IDENTITY LOOKUP</div>
+    </div>
+    <div class="mod-badge">LIVE</div>
+  </div>
+  <div class="mod-body">
+    <div class="irow">
+      <input class="inp" id="ppi" placeholder="Full Name or email address">
+      <button class="btn r" onclick="searchPeople()">SEARCH ▶</button>
+    </div>
+    <div class="res" id="ppr"></div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin:10px 0 5px;">PUBLIC RECORDS DATABASES:</div>
+    <div class="lgrid">
+      <a class="lnk r" id="pp1" href="https://pipl.com" target="_blank">Pipl</a>
+      <a class="lnk r" id="pp2" href="https://spokeo.com" target="_blank">Spokeo</a>
+      <a class="lnk r" id="pp3" href="https://intelius.com" target="_blank">Intelius</a>
+      <a class="lnk r" id="pp4" href="https://whitepages.com" target="_blank">WhitePages</a>
+      <a class="lnk r" id="pp5" href="https://beenverified.com" target="_blank">BeenVerified</a>
+      <a class="lnk r" id="pp6" href="https://fastpeoplefinder.com" target="_blank">FastPeople</a>
+    </div>
+  </div>
+</div>
+
+</div><!-- /mods row2 -->
+
+<!-- ════ ROW 3 ════ -->
+<div class="sec-hdr"><span class="sec-hdr-txt">NETWORK & DOMAIN INTELLIGENCE</span></div>
+<div class="mods">
+
+<!-- IP LOOKUP (live) -->
+<div class="mod g">
+  <div class="mod-top-bar"></div>
+  <div class="mod-hdr">
+    <div class="mod-ico">🌐</div>
+    <div>
+      <div class="mod-title">IP GEOLOCATION</div>
+      <div class="mod-sub">LIVE API · ASN · ISP · COORDINATES</div>
+    </div>
+    <div class="mod-badge">LIVE API</div>
+  </div>
+  <div class="mod-body">
+    <div class="irow">
+      <input class="inp" id="ipi" placeholder="8.8.8.8 or domain.com (blank=your IP)">
+      <button class="btn g" onclick="lookupIP()">TRACE ▶</button>
+    </div>
+    <div class="pbar"><div class="pfill" id="ipbar"></div></div>
+    <div class="res" id="ipr"></div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin:10px 0 5px;">THREAT INTELLIGENCE:</div>
+    <div class="lgrid">
+      <a class="lnk g" id="ni1" href="https://shodan.io" target="_blank">Shodan</a>
+      <a class="lnk g" id="ni2" href="https://censys.io" target="_blank">Censys</a>
+      <a class="lnk g" id="ni3" href="https://bgp.he.net" target="_blank">BGP.he.net</a>
+      <a class="lnk g" id="ni4" href="https://abuseipdb.com" target="_blank">AbuseIPDB</a>
+      <a class="lnk g" id="ni5" href="https://virustotal.com" target="_blank">VirusTotal</a>
+      <a class="lnk g" id="ni6" href="https://ipinfo.io" target="_blank">IPInfo.io</a>
+    </div>
+  </div>
+</div>
+
+<!-- WHOIS/DNS -->
+<div class="mod a">
+  <div class="mod-top-bar"></div>
+  <div class="mod-hdr">
+    <div class="mod-ico">🗂</div>
+    <div>
+      <div class="mod-title">WHOIS & DNS</div>
+      <div class="mod-sub">DOMAIN REGISTRATION & RECORDS</div>
+    </div>
+  </div>
+  <div class="mod-body">
+    <div class="irow">
+      <input class="inp" id="di" placeholder="example.com or example.org">
+      <button class="btn a" onclick="lookupDomain()">QUERY</button>
+    </div>
+    <div class="res" id="dr"></div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin:10px 0 5px;">WHOIS & DNS PLATFORMS:</div>
+    <div class="lgrid">
+      <a class="lnk a" id="dl1" href="https://who.is" target="_blank">who.is</a>
+      <a class="lnk a" id="dl2" href="https://whois.domaintools.com" target="_blank">DomainTools</a>
+      <a class="lnk a" id="dl3" href="https://dnsdumpster.com" target="_blank">DNSDumpster</a>
+      <a class="lnk a" id="dl4" href="https://mxtoolbox.com" target="_blank">MXToolbox</a>
+      <a class="lnk a" id="dl5" href="https://securitytrails.com" target="_blank">SecurityTrails</a>
+      <a class="lnk a" id="dl6" href="https://web.archive.org" target="_blank">Wayback</a>
+    </div>
+  </div>
+</div>
+
+<!-- NETWORK TOOLS -->
+<div class="mod c">
+  <div class="mod-top-bar"></div>
+  <div class="mod-hdr">
+    <div class="mod-ico">📡</div>
+    <div>
+      <div class="mod-title">NETWORK TOOLS</div>
+      <div class="mod-sub">SHODAN · PORT SCAN · IOT DEVICES</div>
+    </div>
+  </div>
+  <div class="mod-body">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-bottom:8px;">NETWORK INTELLIGENCE PLATFORMS (CLICK TO OPEN):</div>
+    <div class="lgrid" style="grid-template-columns:repeat(3,1fr);">
+      <a class="lnk c" href="https://shodan.io" target="_blank">Shodan</a>
+      <a class="lnk c" href="https://censys.io" target="_blank">Censys</a>
+      <a class="lnk c" href="https://fofa.info" target="_blank">FOFA</a>
+      <a class="lnk c" href="https://zoomeye.org" target="_blank">ZoomEye</a>
+      <a class="lnk c" href="https://binaryedge.io" target="_blank">BinaryEdge</a>
+      <a class="lnk c" href="https://urlscan.io" target="_blank">URLScan.io</a>
+      <a class="lnk c" href="https://dnsdumpster.com" target="_blank">DNSDumpster</a>
+      <a class="lnk c" href="https://viewdns.info" target="_blank">ViewDNS</a>
+      <a class="lnk c" href="https://hackertarget.com" target="_blank">HackerTarget</a>
+      <a class="lnk c" href="https://greynoise.io" target="_blank">GreyNoise</a>
+      <a class="lnk c" href="https://threatfox.abuse.ch" target="_blank">ThreatFox</a>
+      <a class="lnk c" href="https://spyse.com" target="_blank">Spyse</a>
+    </div>
+  </div>
+</div>
+
+</div><!-- /mods row3 -->
+
+<!-- ════ ROW 4 ════ -->
+<div class="sec-hdr"><span class="sec-hdr-txt">SOCIAL & MEDIA INTELLIGENCE</span></div>
+<div class="mods">
+
+<!-- SOCIAL MEDIA -->
+<div class="mod p">
+  <div class="mod-top-bar"></div>
+  <div class="mod-hdr">
+    <div class="mod-ico">📱</div>
+    <div>
+      <div class="mod-title">SOCIAL MEDIA FINDER</div>
+      <div class="mod-sub">CROSS-PLATFORM IDENTITY SCANNER</div>
+    </div>
+    <div class="mod-badge">8 PLATFORMS</div>
+  </div>
+  <div class="mod-body">
+    <div class="irow">
+      <input class="inp" id="smi" placeholder="Full name, username or keyword">
+      <button class="btn p" onclick="findSocial()">FIND ▶</button>
+    </div>
+    <div class="lgrid c4">
+      <a class="lnk p" id="sm1" href="https://facebook.com/search/top?q=" target="_blank">Facebook</a>
+      <a class="lnk p" id="sm2" href="https://twitter.com/search?q=" target="_blank">X/Twitter</a>
+      <a class="lnk p" id="sm3" href="https://linkedin.com/search/results/all?keywords=" target="_blank">LinkedIn</a>
+      <a class="lnk p" id="sm4" href="https://instagram.com/" target="_blank">Instagram</a>
+      <a class="lnk p" id="sm5" href="https://youtube.com/results?search_query=" target="_blank">YouTube</a>
+      <a class="lnk p" id="sm6" href="https://tiktok.com/search?q=" target="_blank">TikTok</a>
+      <a class="lnk p" id="sm7" href="https://reddit.com/search?q=" target="_blank">Reddit</a>
+      <a class="lnk p" id="sm8" href="https://github.com/search?q=" target="_blank">GitHub</a>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE INTEL -->
+<div class="mod g">
+  <div class="mod-top-bar"></div>
+  <div class="mod-hdr">
+    <div class="mod-ico">🖼</div>
+    <div>
+      <div class="mod-title">IMAGE INTELLIGENCE</div>
+      <div class="mod-sub">REVERSE SEARCH · EXIF · FORENSICS</div>
+    </div>
+  </div>
+  <div class="mod-body">
+    <div class="irow">
+      <input class="inp" id="imgi" placeholder="Paste image URL for reverse search">
+      <button class="btn g" onclick="imgSearch()">REVERSE ▶</button>
+    </div>
+    <div class="lgrid">
+      <a class="lnk g" id="im1" href="https://lens.google.com" target="_blank">Google Lens</a>
+      <a class="lnk g" id="im2" href="https://tineye.com" target="_blank">TinEye</a>
+      <a class="lnk g" id="im3" href="https://yandex.com/images" target="_blank">Yandex Img</a>
+      <a class="lnk g" id="im4" href="https://images.google.com" target="_blank">Google Images</a>
+      <a class="lnk g" id="im5" href="https://exif.regex.info/exif.cgi" target="_blank">EXIF Viewer</a>
+      <a class="lnk g" id="im6" href="https://fotoforensics.com" target="_blank">FotoForensics</a>
+    </div>
+  </div>
+</div>
+
+<!-- BREACH & DARK WEB -->
+<div class="mod r">
+  <div class="mod-top-bar"></div>
+  <div class="mod-hdr">
+    <div class="mod-ico">⚫</div>
+    <div>
+      <div class="mod-title">BREACH & LEAK MONITOR</div>
+      <div class="mod-sub">CREDENTIAL EXPOSURE DATABASE</div>
+    </div>
+    <div class="mod-badge">7 DBS</div>
+  </div>
+  <div class="mod-body">
+    <div class="irow">
+      <input class="inp" id="bri" placeholder="email@domain.com or username">
+      <button class="btn r" onclick="checkBreach()">CHECK ▶</button>
+    </div>
+    <div class="res" id="brr"></div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin:10px 0 5px;">BREACH DATABASES:</div>
+    <div class="lgrid">
+      <a class="lnk r" href="https://haveibeenpwned.com" target="_blank">HaveIBeenPwnd</a>
+      <a class="lnk r" href="https://dehashed.com" target="_blank">DeHashed</a>
+      <a class="lnk r" href="https://leakcheck.io" target="_blank">LeakCheck</a>
+      <a class="lnk r" href="https://intelx.io" target="_blank">IntelligenceX</a>
+      <a class="lnk r" href="https://breachdirectory.org" target="_blank">BreachDirectory</a>
+      <a class="lnk r" href="https://snusbase.com" target="_blank">Snusbase</a>
+    </div>
+  </div>
+</div>
+
+</div><!-- /mods row4 -->
+
+<!-- ════ ROW 5 ════ -->
+<div class="sec-hdr"><span class="sec-hdr-txt">GEO-INTELLIGENCE & AI ANALYSIS</span></div>
+<div class="mods two-col">
+
+<!-- GEOLOCATION -->
+<div class="mod a">
+  <div class="mod-top-bar"></div>
+  <div class="mod-hdr">
+    <div class="mod-ico">📍</div>
+    <div>
+      <div class="mod-title">GEO-INTELLIGENCE</div>
+      <div class="mod-sub">COORDINATES · MAPS · SATELLITE</div>
+    </div>
+  </div>
+  <div class="mod-body">
+    <div class="irow">
+      <input class="inp" id="gei" placeholder="lat,long OR place name (e.g. 17.38,78.48)">
+      <button class="btn a" onclick="geoLookup()">LOCATE ▶</button>
+    </div>
+    <div class="res" id="ger"></div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin:10px 0 5px;">GEO-OSINT TOOLS:</div>
+    <div class="lgrid">
+      <a class="lnk a" href="https://maps.google.com" target="_blank">Google Maps</a>
+      <a class="lnk a" href="https://wikimapia.org" target="_blank">Wikimapia</a>
+      <a class="lnk a" href="https://zoom.earth" target="_blank">Zoom.Earth</a>
+      <a class="lnk a" href="https://www.bing.com/maps" target="_blank">Bing Maps</a>
+      <a class="lnk a" href="https://opencellid.org" target="_blank">OpenCellID</a>
+      <a class="lnk a" href="https://geoiplookup.net" target="_blank">GeoIP Lookup</a>
+    </div>
+  </div>
+</div>
+
+<!-- AI ANALYSIS -->
+<div class="mod g">
+  <div class="mod-top-bar"></div>
+  <div class="mod-hdr">
+    <div class="mod-ico">🤖</div>
+    <div>
+      <div class="mod-title">AI INTELLIGENCE ANALYST</div>
+      <div class="mod-sub">CLAUDE-POWERED REAL-TIME OSINT ANALYSIS</div>
+    </div>
+    <div class="mod-badge">CLAUDE AI</div>
+  </div>
+  <div class="mod-body">
+    <div class="ai-input-area">
+      <textarea class="ai-textarea" id="aiQuery" placeholder="Ask the AI analyst: analyze this IP, summarize findings about this person, explain OSINT methodology, decode this data..."></textarea>
+    </div>
+    <div class="ai-models">
+      <button class="ai-model-btn active" onclick="setAIMode('analyst',this)">🔍 OSINT ANALYST</button>
+      <button class="ai-model-btn" onclick="setAIMode('email',this)">✉ EMAIL INTEL</button>
+      <button class="ai-model-btn" onclick="setAIMode('ip',this)">🌐 IP ANALYSIS</button>
+      <button class="ai-model-btn" onclick="setAIMode('phone',this)">📞 PHONE INTEL</button>
+      <button class="ai-model-btn" onclick="setAIMode('social',this)">📱 SOCIAL OSINT</button>
+    </div>
+    <div class="irow">
+      <button class="btn g" onclick="runAI()" style="flex:1;">▶ RUN AI ANALYSIS</button>
+      <button class="btn" style="border-color:var(--t3);color:var(--t3);" onclick="clearAI()">CLEAR</button>
+    </div>
+    <div class="ai-res" id="aiRes">
+      <div class="ai-hdr"><div class="ai-spin"></div> <span id="aiStatus">ANALYZING...</span></div>
+      <div id="aiText"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /mods row5 -->
+
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <div class="fl">NEXUS OSINT PLATFORM v3.0 &nbsp;·&nbsp; Educational Use Only &nbsp;·&nbsp; All data from public APIs &nbsp;·&nbsp; <span id="footerIP">Detecting your IP...</span></div>
+  <div class="fr">EXTRACURRICULAR PROJECT &nbsp;◆&nbsp; BUILT WITH INTELLIGENCE</div>
+</footer>
+
+<!-- ═══════════════════ SCRIPTS ═══════════════════ -->
+<script>
+// ─── CANVAS PARTICLE NETWORK ─────────────────────────────
+const canvas = document.getElementById('bgCanvas');
+const ctx = canvas.getContext('2d');
+let W,H,particles=[];
+
+function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+resize();window.addEventListener('resize',resize);
+
+class Particle{
+  constructor(){this.reset();}
+  reset(){
+    this.x=Math.random()*W;this.y=Math.random()*H;
+    this.vx=(Math.random()-.5)*.3;this.vy=(Math.random()-.5)*.3;
+    this.r=Math.random()*1.5+.5;this.a=Math.random()*.5+.1;
+  }
+  update(){
+    this.x+=this.vx;this.y+=this.vy;
+    if(this.x<0||this.x>W||this.y<0||this.y>H)this.reset();
+  }
+  draw(){
+    ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(0,255,157,${this.a})`;ctx.fill();
+  }
+}
+
+for(let i=0;i<80;i++)particles.push(new Particle());
+
+function drawLines(){
+  for(let i=0;i<particles.length;i++)
+    for(let j=i+1;j<particles.length;j++){
+      const dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y;
+      const d=Math.sqrt(dx*dx+dy*dy);
+      if(d<120){
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x,particles[i].y);
+        ctx.lineTo(particles[j].x,particles[j].y);
+        ctx.strokeStyle=`rgba(0,200,120,${.12*(1-d/120)})`;
+        ctx.lineWidth=.5;ctx.stroke();
+      }
+    }
+}
+
+function animBG(){
+  ctx.clearRect(0,0,W,H);
+  particles.forEach(p=>{p.update();p.draw();});
+  drawLines();
+  requestAnimationFrame(animBG);
+}
+animBG();
+
+// ─── CLOCK ───────────────────────────────────────────────
+function updateClock(){
+  const now=new Date();
+  document.getElementById('clk').textContent=
+    now.toLocaleTimeString('en-GB',{hour12:false})+' UTC';
+}
+setInterval(updateClock,1000);updateClock();
+
+// ─── NOTIFY ──────────────────────────────────────────────
+function notify(msg,color){
+  const n=document.getElementById('notif');
+  n.textContent='▶ '+msg;
+  n.style.color=color||'var(--g)';
+  n.style.borderColor=color||'var(--g3)';
+  n.classList.add('show');
+  clearTimeout(n._t);
+  n._t=setTimeout(()=>n.classList.remove('show'),2800);
+}
+
+// ─── ENGINES ─────────────────────────────────────────────
+const ENGINES={
+  google:    q=>`https://www.google.com/search?q=${encodeURIComponent(q)}`,
+  bing:      q=>`https://www.bing.com/search?q=${encodeURIComponent(q)}`,
+  ddg:       q=>`https://duckduckgo.com/?q=${encodeURIComponent(q)}`,
+  yandex:    q=>`https://yandex.com/search/?text=${encodeURIComponent(q)}`,
+  brave:     q=>`https://search.brave.com/search?q=${encodeURIComponent(q)}`,
+  startpage: q=>`https://www.startpage.com/search?q=${encodeURIComponent(q)}`,
+  ecosia:    q=>`https://www.ecosia.org/search?q=${encodeURIComponent(q)}`,
+  shodan:    q=>`https://www.shodan.io/search?query=${encodeURIComponent(q)}`,
+  censys:    q=>`https://search.censys.io/search?resource=hosts&q=${encodeURIComponent(q)}`,
+  greynoise: q=>`https://viz.greynoise.io/query/?gnql=${encodeURIComponent(q)}`
+};
+
+function doSearch(){
+  const q=document.getElementById('sq').value.trim();
+  const eng=document.getElementById('se').value;
+  if(!q){notify('ENTER A SEARCH QUERY','var(--a)');return;}
+  window.open(ENGINES[eng](q),'_blank');
+  notify('LAUNCHED → '+eng.toUpperCase());
+}
+
+function se(eng){
+  const q=document.getElementById('sq').value.trim();
+  if(!q){notify('ENTER QUERY FIRST','var(--a)');return;}
+  window.open(ENGINES[eng](q),'_blank');
+  notify('LAUNCHED → '+eng.toUpperCase());
+}
+
+function pt(tag){
+  const el=document.getElementById('sq');
+  el.value=(el.value.trim()+' '+tag).trim();
+  el.focus();
+}
+
+// ─── EMAIL ANALYSIS ──────────────────────────────────────
+function analyzeEmail(){
+  const raw=document.getElementById('ei').value.trim();
+  const box=document.getElementById('er');
+  if(!raw){notify('ENTER AN EMAIL','var(--a)');return;}
+
+  const re=/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+  const valid=re.test(raw);
+  const[user,domain]=(raw.split('@').length===2)?raw.split('@'):['?','?'];
+  const tld=(domain||'').split('.').pop();
+
+  const providers={
+    'gmail.com':'Google Gmail','yahoo.com':'Yahoo Mail','outlook.com':'Microsoft Outlook',
+    'hotmail.com':'Microsoft Hotmail','live.com':'Microsoft Live','icloud.com':'Apple iCloud',
+    'protonmail.com':'ProtonMail (Encrypted)','tutanota.com':'Tutanota (E2E Encrypted)',
+    'zoho.com':'Zoho Mail','yandex.ru':'Yandex Mail','aol.com':'AOL Mail',
+    'pm.me':'ProtonMail Short','fastmail.com':'FastMail','hey.com':'HEY Email'
+  };
+
+  const disposables=['mailinator.com','guerrillamail.com','tempmail.com','throwam.com',
+    'yopmail.com','sharklasers.com','mailnull.com','trashmail.com','10minutemail.com'];
+
+  const prov=providers[(domain||'').toLowerCase()]||'Unknown / Corporate Domain';
+  const disp=disposables.includes((domain||'').toLowerCase());
+
+  let score=0;
+  if(valid)score+=3;
+  if((user||'').length>=4)score+=1;
+  if(!disp)score+=2;
+  if(tld&&tld.length>=2&&tld.length<=4)score+=1;
+  const sl=score>=6?`<span class="rok">HIGH (${score}/7)</span>`:score>=4?`<span class="rwn">MEDIUM (${score}/7)</span>`:`<span class="rbd">LOW (${score}/7)</span>`;
+
+  box.innerHTML=`<span class="rl">EMAIL    : </span><span class="rc">${raw}</span>
+<span class="rl">VALID    : </span>${valid?'<span class="rok">✓ VALID FORMAT</span>':'<span class="rbd">✗ INVALID FORMAT</span>'}
+<span class="rl">USERNAME : </span><span class="rv">${user}</span>
+<span class="rl">DOMAIN   : </span><span class="rv">${domain}</span>
+<span class="rl">PROVIDER : </span><span class="ra">${prov}</span>
+<span class="rl">TLD      : </span><span class="rv">.${tld}</span>
+<span class="rl">DISPOSABLE: </span>${disp?'<span class="rbd">⚠ LIKELY DISPOSABLE</span>':'<span class="rok">✓ NOT DISPOSABLE</span>'}
+<span class="rl">TRUST    : </span>${sl}`;
+  box.classList.add('on');
+
+  document.getElementById('el1').href=`https://haveibeenpwned.com/account/${encodeURIComponent(raw)}`;
+  document.getElementById('el3').href=`https://hunter.io/email-verifier/${encodeURIComponent(raw)}`;
+  document.getElementById('el4').href=`https://emailrep.io/${encodeURIComponent(raw)}`;
+
+  notify('EMAIL ANALYZED — CHECK BREACH DBs BELOW','var(--c)');
+}
+
+// ─── PHONE ANALYSIS ──────────────────────────────────────
+const CC={
+  '+1':'US / Canada','+7':'Russia / Kazakhstan','+20':'Egypt','+27':'South Africa',
+  '+30':'Greece','+31':'Netherlands','+32':'Belgium','+33':'France','+34':'Spain',
+  '+36':'Hungary','+39':'Italy','+40':'Romania','+41':'Switzerland','+43':'Austria',
+  '+44':'United Kingdom','+45':'Denmark','+46':'Sweden','+47':'Norway','+48':'Poland',
+  '+49':'Germany','+51':'Peru','+52':'Mexico','+53':'Cuba','+54':'Argentina',
+  '+55':'Brazil','+56':'Chile','+57':'Colombia','+58':'Venezuela','+60':'Malaysia',
+  '+61':'Australia','+62':'Indonesia','+63':'Philippines','+64':'New Zealand',
+  '+65':'Singapore','+66':'Thailand','+81':'Japan','+82':'South Korea','+84':'Vietnam',
+  '+86':'China','+90':'Turkey','+91':'India','+92':'Pakistan','+93':'Afghanistan',
+  '+94':'Sri Lanka','+95':'Myanmar','+98':'Iran','+212':'Morocco','+213':'Algeria',
+  '+216':'Tunisia','+218':'Libya','+234':'Nigeria','+254':'Kenya','+255':'Tanzania',
+  '+256':'Uganda','+260':'Zambia','+263':'Zimbabwe','+351':'Portugal',
+  '+352':'Luxembourg','+353':'Ireland','+354':'Iceland','+380':'Ukraine',
+  '+381':'Serbia','+385':'Croatia','+386':'Slovenia','+420':'Czech Republic',
+  '+421':'Slovakia','+971':'UAE','+972':'Israel','+974':'Qatar','+966':'Saudi Arabia',
+  '+880':'Bangladesh','+960':'Maldives'
+};
+
+function analyzePhone(){
+  const raw=document.getElementById('pi').value.trim();
+  const box=document.getElementById('pr');
+  if(!raw){notify('ENTER A PHONE NUMBER','var(--a)');return;}
+
+  const digits=raw.replace(/[^0-9+]/g,'');
+  let country='Unknown',code='';
+
+  for(const[c,n]of Object.entries(CC).sort((a,b)=>b[0].length-a[0].length)){
+    if(digits.startsWith(c)){country=n;code=c;break;}
+  }
+  const local=digits.replace(code,'').trim();
+  const len=local.length;
+
+  const flag=code.replace('+','').slice(0,2).toUpperCase()
+    .replace(/./g,c=>String.fromCodePoint(127397+c.charCodeAt()));
+
+  box.innerHTML=`<span class="rl">INPUT    : </span><span class="rc">${raw}</span>
+<span class="rl">IDD CODE : </span><span class="rv">${code||'NOT FOUND'}</span>
+<span class="rl">COUNTRY  : </span><span class="ra">${flag} ${country}</span>
+<span class="rl">LOCAL NUM: </span><span class="rv">${local}</span>
+<span class="rl">LENGTH   : </span><span class="rv">${len} digits — ${len>=7&&len<=12?'<span class="rok">PLAUSIBLE</span>':'<span class="rwn">UNUSUAL</span>'}</span>
+<span class="rl">E.164    : </span><span class="rv">${code}${local}</span>`;
+  box.classList.add('on');
+
+  document.getElementById('pl1').href=`https://www.truecaller.com/search/in/${digits.replace('+','').replace(/\s/g,'')}`;
+  notify('PHONE DECODED → '+country,'var(--a)');
+}
+
+// ─── IP GEOLOCATION (LIVE API) ───────────────────────────
+async function lookupIP(){
+  const raw=document.getElementById('ipi').value.trim();
+  const box=document.getElementById('ipr');
+  const bar=document.getElementById('ipbar');
+
+  box.innerHTML='<span class="ai-spin"></span> QUERYING LIVE GEOLOCATION API...';
+  box.classList.add('on');
+  bar.style.width='25%';
+
+  try{
+    bar.style.width='55%';
+    const url=raw?`https://ipapi.co/${encodeURIComponent(raw)}/json/`:'https://ipapi.co/json/';
+    const res=await fetch(url);
+    const d=await res.json();
+    bar.style.width='100%';
+    setTimeout(()=>bar.style.width='0%',800);
+
+    if(d.error){
+      box.innerHTML=`<span class="rbd">✗ ERROR: ${d.reason||d.error}</span>`;return;
+    }
+
+    const flag=d.country_code
+      ?d.country_code.toUpperCase().replace(/./g,c=>String.fromCodePoint(127397+c.charCodeAt()))
+      :'';
+
+    box.innerHTML=`<span class="rl">IP       : </span><span class="rv">${d.ip}</span>
+<span class="rl">HOSTNAME : </span><span class="rv">${d.hostname||'N/A'}</span>
+<span class="rl">COUNTRY  : </span><span class="ra">${flag} ${d.country_name} (${d.country_code})</span>
+<span class="rl">REGION   : </span><span class="rv">${d.region||'N/A'}</span>
+<span class="rl">CITY     : </span><span class="rv">${d.city||'N/A'}</span>
+<span class="rl">ZIP      : </span><span class="rv">${d.postal||'N/A'}</span>
+<span class="rl">COORDS   : </span><span class="rc">${d.latitude}, ${d.longitude}</span>
+<span class="rl">ISP/ORG  : </span><span class="rv">${d.org||'N/A'}</span>
+<span class="rl">ASN      : </span><span class="rp">${d.asn||'N/A'}</span>
+<span class="rl">TIMEZONE : </span><span class="rv">${d.timezone||'N/A'}</span>
+<span class="rl">CURRENCY : </span><span class="rv">${d.currency_name||'N/A'} (${d.currency||'N/A'})</span>`;
+
+    const ip=d.ip;
+    document.getElementById('ni1').href=`https://www.shodan.io/host/${ip}`;
+    document.getElementById('ni2').href=`https://search.censys.io/hosts/${ip}`;
+    document.getElementById('ni3').href=`https://bgp.he.net/ip/${ip}`;
+    document.getElementById('ni4').href=`https://www.abuseipdb.com/check/${ip}`;
+    document.getElementById('ni5').href=`https://www.virustotal.com/gui/ip-address/${ip}`;
+    document.getElementById('ni6').href=`https://ipinfo.io/${ip}`;
+
+    notify(`IP TRACED: ${ip} → ${d.country_name}`,'var(--g)');
+  }catch(e){
+    bar.style.width='0%';
+    box.innerHTML='<span class="rbd">✗ NETWORK ERROR — CORS RESTRICTION ON DIRECT API</span>';
+  }
+}
+
+// ─── USERNAME HUNT (40 platforms) ────────────────────────
+const PLATFORMS=[
+  {n:'GitHub',c:'#00ff9d',u:u=>`https://github.com/${u}`},
+  {n:'Twitter/X',c:'#00d4ff',u:u=>`https://twitter.com/${u}`},
+  {n:'Instagram',c:'#bf5fff',u:u=>`https://instagram.com/${u}`},
+  {n:'Reddit',c:'#ff8c42',u:u=>`https://reddit.com/user/${u}`},
+  {n:'TikTok',c:'#00d4ff',u:u=>`https://tiktok.com/@${u}`},
+  {n:'YouTube',c:'#ff2d55',u:u=>`https://youtube.com/@${u}`},
+  {n:'Pinterest',c:'#ff2d55',u:u=>`https://pinterest.com/${u}`},
+  {n:'Tumblr',c:'#00cc7a',u:u=>`https://${u}.tumblr.com`},
+  {n:'Medium',c:'#00ff9d',u:u=>`https://medium.com/@${u}`},
+  {n:'Twitch',c:'#9933ff',u:u=>`https://twitch.tv/${u}`},
+  {n:'SoundCloud',c:'#ff8c42',u:u=>`https://soundcloud.com/${u}`},
+  {n:'Spotify',c:'#00cc7a',u:u=>`https://open.spotify.com/user/${u}`},
+  {n:'Steam',c:'#00d4ff',u:u=>`https://steamcommunity.com/id/${u}`},
+  {n:'Keybase',c:'#00d4ff',u:u=>`https://keybase.io/${u}`},
+  {n:'Flickr',c:'#ff8c42',u:u=>`https://flickr.com/people/${u}`},
+  {n:'DeviantArt',c:'#00cc7a',u:u=>`https://${u}.deviantart.com`},
+  {n:'GitLab',c:'#ff8c42',u:u=>`https://gitlab.com/${u}`},
+  {n:'HackerNews',c:'#ff8c42',u:u=>`https://news.ycombinator.com/user?id=${u}`},
+  {n:'ProductHunt',c:'#ff2d55',u:u=>`https://producthunt.com/@${u}`},
+  {n:'Replit',c:'#00d4ff',u:u=>`https://replit.com/@${u}`},
+  {n:'Quora',c:'#ff2d55',u:u=>`https://quora.com/profile/${u}`},
+  {n:'Vimeo',c:'#00cc7a',u:u=>`https://vimeo.com/${u}`},
+  {n:'Behance',c:'#00d4ff',u:u=>`https://behance.net/${u}`},
+  {n:'Dribbble',c:'#ff2d55',u:u=>`https://dribbble.com/${u}`},
+  {n:'CodePen',c:'#00ff9d',u:u=>`https://codepen.io/${u}`},
+  {n:'StackOverflow',c:'#ff8c42',u:u=>`https://stackoverflow.com/users/${u}`},
+  {n:'Telegram',c:'#00d4ff',u:u=>`https://t.me/${u}`},
+  {n:'Discord',c:'#9933ff',u:u=>`https://discord.com/users/${u}`},
+  {n:'Patreon',c:'#ff8c42',u:u=>`https://patreon.com/${u}`},
+  {n:'Ko-fi',c:'#00cc7a',u:u=>`https://ko-fi.com/${u}`},
+  {n:'Mastodon',c:'#bf5fff',u:u=>`https://mastodon.social/@${u}`},
+  {n:'Substack',c:'#ff8c42',u:u=>`https://substack.com/@${u}`},
+  {n:'Linktree',c:'#00cc7a',u:u=>`https://linktr.ee/${u}`},
+  {n:'About.me',c:'#00d4ff',u:u=>`https://about.me/${u}`},
+  {n:'LinkedIn',c:'#00d4ff',u:u=>`https://linkedin.com/in/${u}`},
+  {n:'500px',c:'#ff8c42',u:u=>`https://500px.com/p/${u}`},
+  {n:'Last.fm',c:'#ff2d55',u:u=>`https://last.fm/user/${u}`},
+  {n:'Letterboxd',c:'#00cc7a',u:u=>`https://letterboxd.com/${u}`},
+  {n:'Goodreads',c:'#ff8c42',u:u=>`https://goodreads.com/${u}`},
+  {n:'Mix',c:'#ff2d55',u:u=>`https://mix.com/${u}`},
+];
+
+function huntUser(){
+  const u=document.getElementById('ui').value.trim();
+  if(!u){notify('ENTER A USERNAME','var(--a)');return;}
+  const area=document.getElementById('uresArea');
+  const links=document.getElementById('uresLinks');
+  links.innerHTML='';
+  PLATFORMS.forEach(p=>{
+    const a=document.createElement('a');
+    a.className='ulink';a.href=p.u(u);a.target='_blank';
+    a.innerHTML=`<span class="udot" style="background:${p.c}"></span>${p.n}`;
+    links.appendChild(a);
+  });
+  area.style.display='block';
+  notify(`${PLATFORMS.length} PROFILE LINKS GENERATED FOR "${u}"`,'var(--c)');
+}
+
+// ─── DOMAIN / WHOIS ──────────────────────────────────────
+function lookupDomain(){
+  const d=document.getElementById('di').value.trim();
+  const box=document.getElementById('dr');
+  if(!d){notify('ENTER A DOMAIN','var(--a)');return;}
+  const clean=d.replace(/https?:\/\//g,'').replace(/\//g,'').trim();
+  const tld=clean.split('.').pop();
+  box.innerHTML=`<span class="rl">DOMAIN   : </span><span class="rv">${clean}</span>
+<span class="rl">TLD      : </span><span class="rv">.${tld}</span>
+<span class="rl">WAYBACK  : </span><span class="rc">web.archive.org/web/*/${clean}</span>
+<span class="rl">STATUS   : </span><span class="rok">✓ LINKS UPDATED — USE TOOLS BELOW</span>`;
+  box.classList.add('on');
+  document.getElementById('dl1').href=`https://who.is/whois/${clean}`;
+  document.getElementById('dl2').href=`https://whois.domaintools.com/${clean}`;
+  document.getElementById('dl4').href=`https://mxtoolbox.com/SuperTool.aspx?action=mx%3a${clean}`;
+  document.getElementById('dl5').href=`https://securitytrails.com/domain/${clean}/dns`;
+  document.getElementById('dl6').href=`https://web.archive.org/web/*/${clean}`;
+  notify('DOMAIN QUERIED: '+clean,'var(--a)');
+}
+
+// ─── SOCIAL MEDIA ─────────────────────────────────────────
+function findSocial(){
+  const q=document.getElementById('smi').value.trim();
+  if(!q){notify('ENTER NAME OR USERNAME','var(--a)');return;}
+  const e=encodeURIComponent(q);
+  document.getElementById('sm1').href=`https://facebook.com/search/top?q=${e}`;
+  document.getElementById('sm2').href=`https://twitter.com/search?q=${e}`;
+  document.getElementById('sm3').href=`https://linkedin.com/search/results/all?keywords=${e}`;
+  document.getElementById('sm4').href=`https://instagram.com/${e}`;
+  document.getElementById('sm5').href=`https://youtube.com/results?search_query=${e}`;
+  document.getElementById('sm6').href=`https://tiktok.com/search?q=${e}`;
+  document.getElementById('sm7').href=`https://reddit.com/search?q=${e}`;
+  document.getElementById('sm8').href=`https://github.com/search?q=${e}&type=users`;
+  notify(`SOCIAL LINKS UPDATED FOR "${q}"`,'var(--p)');
+}
+
+// ─── IMAGE SEARCH ─────────────────────────────────────────
+function imgSearch(){
+  const url=document.getElementById('imgi').value.trim();
+  if(!url){notify('PASTE AN IMAGE URL','var(--a)');return;}
+  const e=encodeURIComponent(url);
+  document.getElementById('im1').href=`https://lens.google.com/uploadbyurl?url=${e}`;
+  document.getElementById('im2').href=`https://tineye.com/search?url=${e}`;
+  document.getElementById('im3').href=`https://yandex.com/images/search?rpt=imageview&url=${e}`;
+  window.open(`https://lens.google.com/uploadbyurl?url=${e}`,'_blank');
+  notify('REVERSE IMAGE SEARCH LAUNCHED','var(--g)');
+}
+
+// ─── BREACH CHECK ─────────────────────────────────────────
+function checkBreach(){
+  const val=document.getElementById('bri').value.trim();
+  const box=document.getElementById('brr');
+  if(!val){notify('ENTER EMAIL OR USERNAME','var(--a)');return;}
+  box.innerHTML=`<span class="rl">TARGET   : </span><span class="rr">${val}</span>
+<span class="rl">ACTION   : </span><span class="rwn">⚠ USE EXTERNAL SERVICES BELOW TO CHECK</span>
+<span class="rl">RECOMMENDED: </span><span class="rv">HaveIBeenPwned, IntelligenceX, DeHashed</span>`;
+  box.classList.add('on');
+  window.open(`https://haveibeenpwned.com/account/${encodeURIComponent(val)}`,'_blank');
+  notify('BREACH CHECK LAUNCHED → HIBP','var(--r)');
+}
+
+// ─── GEOLOCATION ──────────────────────────────────────────
+function geoLookup(){
+  const q=document.getElementById('gei').value.trim();
+  const box=document.getElementById('ger');
+  if(!q){notify('ENTER COORDINATES OR PLACE','var(--a)');return;}
+  const coordRe=/^-?\d{1,2}\.?\d*\s*,\s*-?\d{1,3}\.?\d*$/;
+  const isCoord=coordRe.test(q);
+  const e=encodeURIComponent(q);
+  if(isCoord){
+    const[lat,lon]=q.split(',').map(s=>s.trim());
+    box.innerHTML=`<span class="rl">TYPE     : </span><span class="rv">GPS COORDINATES</span>
+<span class="rl">LAT      : </span><span class="rc">${lat}°</span>
+<span class="rl">LON      : </span><span class="rc">${lon}°</span>
+<span class="rl">MAPS     : </span><span class="rv">maps.google.com/maps?q=${lat},${lon}</span>`;
+    window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lon}`,'_blank');
+  }else{
+    box.innerHTML=`<span class="rl">TYPE     : </span><span class="rv">PLACE NAME SEARCH</span>
+<span class="rl">QUERY    : </span><span class="rc">${q}</span>
+<span class="rl">OPENING  : </span><span class="rok">✓ GOOGLE MAPS</span>`;
+    window.open(`https://www.google.com/maps/search/${e}`,'_blank');
+  }
+  box.classList.add('on');
+  notify('GEO LOOKUP LAUNCHED','var(--a)');
+}
+
+// ─── PEOPLE SEARCH ────────────────────────────────────────
+function searchPeople(){
+  const q=document.getElementById('ppi').value.trim();
+  const box=document.getElementById('ppr');
+  if(!q){notify('ENTER NAME OR EMAIL','var(--a)');return;}
+  const e=encodeURIComponent(q);
+  box.innerHTML=`<span class="rl">TARGET   : </span><span class="rc">${q}</span>
+<span class="rl">STATUS   : </span><span class="rok">✓ LINKS UPDATED — USE DATABASES BELOW</span>`;
+  box.classList.add('on');
+  document.getElementById('pp1').href=`https://pipl.com/search/?q=${e}`;
+  document.getElementById('pp2').href=`https://spokeo.com/search?q=${e}`;
+  document.getElementById('pp4').href=`https://whitepages.com/name/${e}`;
+  document.getElementById('pp5').href=`https://beenverified.com/people/${e}`;
+  document.getElementById('pp6').href=`https://fastpeoplefinder.com/name/${e}`;
+  window.open(`https://www.google.com/search?q=${e}+public+records`,'_blank');
+  notify(`PEOPLE SEARCH: "${q}"`, 'var(--r)');
+}
+
+// ─── AI ANALYST (Claude API) ─────────────────────────────
+let aiMode='analyst';
+
+const AI_PROMPTS={
+  analyst:`You are NEXUS, an elite OSINT intelligence analyst. Analyze the provided information concisely with tactical intelligence. Format with sections: SUMMARY, KEY FINDINGS, RECOMMENDED ACTIONS. Be precise and professional.`,
+  email:`You are an email intelligence specialist. Analyze the email address provided. Identify provider patterns, likely registration date range, associated services, security recommendations. Be concise.`,
+  ip:`You are a network intelligence analyst. Analyze IP addresses or domains. Discuss geolocation, ASN, threat level, common uses of that IP range, recommendations. Be concise.`,
+  phone:`You are a phone intelligence specialist. Analyze phone numbers. Discuss country, carrier patterns, format validity, OSINT implications. Be concise.`,
+  social:`You are a social OSINT specialist. Analyze usernames, names, or social media targets. Discuss cross-platform presence, likely platforms, investigation approach. Be concise.`
+};
+
+function setAIMode(mode,btn){
+  aiMode=mode;
+  document.querySelectorAll('.ai-model-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+async function runAI(){
+  const query=document.getElementById('aiQuery').value.trim();
+  if(!query){notify('ENTER A QUERY FOR AI ANALYSIS','var(--a)');return;}
+
+  const res=document.getElementById('aiRes');
+  const txt=document.getElementById('aiText');
+  const status=document.getElementById('aiStatus');
+
+  res.classList.add('on');
+  txt.innerHTML='';
+  status.textContent='ANALYZING...';
+
+  try{
+    const response=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system:AI_PROMPTS[aiMode],
+        messages:[{role:'user',content:query}]
+      })
+    });
+    const data=await response.json();
+    const text=data.content?.[0]?.text||'No response.';
+    status.textContent='ANALYSIS COMPLETE';
+    // Typewriter effect
+    let i=0;
+    function type(){
+      if(i<text.length){
+        txt.textContent+=text[i++];
+        setTimeout(type,8);
+      }
+    }
+    type();
+    notify('AI ANALYSIS COMPLETE','var(--g)');
+  }catch(e){
+    status.textContent='ERROR';
+    txt.textContent='Connection error. Ensure you have network access.';
+  }
+}
+
+function clearAI(){
+  document.getElementById('aiQuery').value='';
+  document.getElementById('aiRes').classList.remove('on');
+  document.getElementById('aiText').textContent='';
+}
+
+// ─── AUTO-DETECT USER IP ──────────────────────────────────
+async function detectSelfIP(){
+  try{
+    const r=await fetch('https://ipapi.co/json/');
+    const d=await r.json();
+    document.getElementById('footerIP').textContent=
+      `Your IP: ${d.ip} · ${d.city}, ${d.country_name}`;
+  }catch(e){
+    document.getElementById('footerIP').textContent='IP detection unavailable';
+  }
+}
+detectSelfIP();
+
+// ─── KEYBOARD SHORTCUTS ───────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter')return;
+  const id=document.activeElement?.id;
+  if(id==='sq')doSearch();
+  if(id==='ei')analyzeEmail();
+  if(id==='pi')analyzePhone();
+  if(id==='ipi')lookupIP();
+  if(id==='ui')huntUser();
+  if(id==='di')lookupDomain();
+  if(id==='smi')findSocial();
+  if(id==='ppi')searchPeople();
+  if(id==='bri')checkBreach();
+  if(id==='gei')geoLookup();
+  if(id==='imgi')imgSearch();
+  if(id==='aiQuery'&&e.ctrlKey)runAI();
+});
+
+// ─── INIT ─────────────────────────────────────────────────
+window.addEventListener('load',()=>{
+  notify('NEXUS SYSTEMS ONLINE — ALL MODULES ACTIVE','var(--g)');
+});
+</script>
+</body>
+</html>
